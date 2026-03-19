@@ -1,0 +1,1128 @@
+
+IL6 - Microsoft Defender for Identity Deployment Configuration Guide Ver 1 Rel 1
+Prepared for
+DCDC
+3/19/2026
+Version 1.0 Draft
+
+Prepared by
+Hannah Snesil
+Cloud Solution Architect
+hannahsnesil@microsoft.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+MICROSOFT MAKES NO WARRANTIES, EXPRESS OR IMPLIED, IN THIS DOCUMENT. 
+Complying with all applicable copyright laws is the responsibility of the user. Without limiting the rights under copyright, no part of this document may be reproduced, stored in, or introduced into a retrieval system, or transmitted in any form or by any means (electronic, mechanical, photocopying, recording, or otherwise), or for any purpose, without the express written permission of Microsoft Corporation. 
+Microsoft may have patents, patent applications, trademarks, copyrights, or other intellectual property rights covering subject matter in this document. Except as expressly provided in any written license agreement from Microsoft, our provision of this document does not give you any license to these patents, trademarks, copyrights, or other intellectual property. 
+Descriptions of other companies’ products in this document, if there are any, are provided only as a convenience to you. Any such references should not be considered endorsement or support by Microsoft. Microsoft cannot guarantee their accuracy, and the products may change over time. Also, the descriptions are intended as brief highlights to aid understanding, rather than as thorough coverage. For authoritative descriptions of these products, please consult their respective manufacturers.
+© 2024 Microsoft Corporation. All rights reserved. Any use or distribution of these materials without express authorization of Microsoft Corp. is strictly prohibited.
+Microsoft and Windows are either registered trademarks or trademarks of Microsoft Corporation in the United States and/or other countries.
+The names of actual companies and products mentioned herein may be the trademarks of their respective owners.
+Revision and Signoff Sheet
+Change Record
+Date
+Author
+Version
+Change Reference
+
+9/11/2024
+Hannah Snesil
+1.0
+Initial release.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Reviewers
+Name
+Version Approved
+Position
+Date
+
+Andrew Masse
+1.0
+Prin Cloud Solution Architect
+10/30/2024
+
+Michael Crane
+
+
+3/19/2026
+
+
+
+
+
+
+
+Table of Contents
+1	Executive Summary	7
+2	Microsoft Defender for Identity deployment	8
+2.1	MDI Prerequisites	8
+2.1.1	Permissions	8
+2.1.2	Security Groups	9
+2.1.3	Connectivity Requirements	10
+2.2	Sensor Requirements and Recommendations	11
+2.2.1	Minimum operating system requirements	12
+2.2.2	Required Ports	12
+2.2.3	Dynamic memory requirements	14
+2.2.4	Time synchronization	14
+2.2.5	Test your prerequisites	14
+2.2.6	Capacity Planning	14
+2.3	Configure endpoint proxy and internet connectivity settings	15
+2.3.1	Enable access to Defender for Identity service URLs in the proxy server	15
+2.3.2	Enable access with a service tag	16
+2.3.3	Change proxy configuration using the CLI	16
+2.3.4	Change proxy configuration using PowerShell	16
+2.3.5	Change proxy configuration using legacy methods	17
+2.3.6	Configure a proxy server using WinINet	17
+2.3.7	Configure a proxy server using the registry	17
+2.4	Test Microsoft Defender for Identity connectivity	18
+2.4.1	Test connectivity using a browser	19
+2.4.2	Test service connectivity using PowerShell	19
+2.5	Configure Event collection	20
+2.5.1	Event collection for domain controllers and AD FS / AD CS servers	20
+2.5.2	Reference of required events	20
+2.6	Configure audit policies for Windows event logs	22
+2.6.1	Prerequisites	22
+2.6.2	Generate a report with current configurations via PowerShell	22
+2.6.3	Configure auditing for domain controllers	23
+2.6.4	Configure NTLM auditing	29
+2.6.5	Configure domain object auditing	30
+2.6.6	Configure auditing for Active Directory Certificate Services (AD CS)	30
+2.6.7	Configure auditing for Entra Connect	33
+2.6.8	Configure auditing on the configuration container	34
+2.7	Configure Directory Service Account	34
+2.8	Grant Directory Service Account permissions on all objects	36
+2.9	Configure SAM-R for lateral movement	37
+2.10	Download and install the MDI sensor	38
+2.10.1	Download the MDI sensor	38
+2.10.2	Install the sensor using the UI	39
+2.10.3	Viewing sensor versions	40
+2.10.4	Defender for Identity sensor silent installation	41
+2.10.5	Silent installation via a deployment system	41
+2.10.6	Run a silent installation	41
+2.10.7	Run a silent installation with a proxy configuration	42
+2.11	Configure Microsoft Defender for Identity sensor settings	43
+2.12	Validate installation	44
+2.12.1	Verify security alert functionality	44
+2.12.2	Verify latest available sensor version	45
+Appendix A: DAO Consolidated Checklist	46
+Appendix C: Additional Microsoft Documentation	47
+
+Executive Summary
+This document’s purpose is to aid DODIN Areas of Operations (DAOs) in the configuration of Microsoft Entra ID and Microsoft Defender for Identity to meet the requirements in the DoD Zero Trust strategy user pillar.
+Microsoft Defender for Identity deployment provides visibility into Active Directory Domain Services environments, analyzes network traffic and Windows events to proactively assess identity security posture, detect threats, investigate suspicious activities, and respond to on-premises Active Directory attacks.
+Microsoft Defender for Identity deployment
+MDI Prerequisites
+Permissions
+The following table details the specific permissions required for Defender for Identity activities in Microsoft Defender XDR.
+Activity
+Required permissions
+
+Onboard Defender for Identity (create workspace)
+One of the following Microsoft Entra roles: - Global Administrator - Security Administrator
+
+Configure Defender for Identity settings
+One of the following Microsoft Entra roles: - Global Administrator - Security Administrator - Security Operator Or The following Unified RBAC permissions: - Authorization and settings/Security settings/Read - Authorization and settings/Security settings/All permissions - Authorization and settings/System settings/Read - Authorization and settings/System settings/All permissions
+
+View Defender for Identity settings
+One of the following Microsoft Entra roles: - Global Reader - Security Reader Or The following Unified RBAC permissions: - Authorization and settings/Security settings/Read - Authorization and settings/System settings/Read
+
+Manage Defender for Identity security alerts and activities
+One of the following Microsoft Entra roles: - Security Operator Or The following Unified RBAC permissions: - Security operations/Security data/Alerts (Manage) - Security operations/Security data /Security data basics (Read)
+
+View Defender for Identity security assessments (now part of Microsoft Secure Score)
+Permissions to access Microsoft Secure Score And The following Unified RBAC permissions: Security operations/Security data /Security data basics (Read)
+
+View the Assets / Identities page
+Permissions to access Defender for Cloud Apps Or One of the Microsoft Entra roles:
+Security Reader 
+
+Perform Defender for Identity response actions
+A custom role defined with permissions for Response (manage) Or One of the following Microsoft Entra roles:
+Security Operator
+
+Table 1 - MDI permissions
+ 
+Security Groups
+Defender for Identity provides the following security groups to help manage access to Defender for Identity resources:
+Azure ATP (workspace name) Administrators
+Azure ATP (workspace name) Users
+Azure ATP (workspace name) Viewers
+The following table lists the activities available for each security group:
+Activity
+Azure ATP (workspace name) Administrators
+Azure ATP (Workspace name) Users
+Azure ATP (Workspace name) Viewers
+
+Change health issue status
+Available
+Not available
+Not available
+
+Change security alert status (reopen, close, exclude, suppress)
+Available
+Available
+Not available
+
+Delete workspace
+Available
+Not available
+Not available
+
+Download a report
+Available
+Available
+Available
+
+Sign in
+Available
+Available
+Available
+
+Share/Export security alerts (via email, get link, download details)
+Available
+Available
+Available
+
+Update Defender for Identity configuration (updates)
+Available
+Not available
+Not available
+
+Update Defender for Identity configuration (entity tags, including both sensitive and honeytoken)
+Available
+Available
+Not available
+
+Update Defender for Identity configuration (exclusions)
+Available
+Available
+Not available
+
+Update Defender for Identity configuration (language)
+Available
+Available
+Not available
+
+Update Defender for Identity configuration (notifications, including both email and syslog)
+Available
+Available
+Not available
+
+Update Defender for Identity configuration (preview detections)
+Available
+Available
+Not available
+
+Update Defender for Identity configuration (scheduled reports)
+Available
+Available
+Not available
+
+Update Defender for Identity configuration (data sources, including directory services, SIEM, VPN, Defender for Endpoint)
+Available
+Not available
+Not available
+
+Update Defender for Identity configuration (sensor management, including downloading software, regenerating keys, configuring, deleting)
+Available
+Not available
+Not available
+
+View entity profiles and security alerts
+Available
+Available
+Available
+
+Table 2 - Activities for each MDI security group
+ 
+Connectivity Requirements
+Disclaimer
+You may have to allow *atp.azure.us through your proxy instead *.atp.azure.com.
+The Defender for Identity sensor must be able to communicate with the Defender for Identity cloud service, using one of the following methods:
+Method
+Description
+Considerations
+Learn more
+
+Set up a proxy
+Customers who have a forward proxy deployed can take advantage of the proxy to provide connectivity to the MDI cloud service. If you choose this option, you'll configure your proxy later in the deployment process. Proxy configurations include allowing traffic to the sensor URL, and configuring Defender for Identity URLs to any explicit allowlists used by your proxy or firewall.
+Allows access to the internet for a single URL SSL inspection isn't supported
+Configure endpoint proxy and internet connectivity settings Run a silent installation with a proxy configuration
+
+ExpressRoute
+ExpressRoute can be configured to forward MDI sensor traffic over customer’s express route. To route network traffic destined to the Defender for Identity cloud servers use ExpressRoute Microsoft peering and add the Microsoft Defender for Identity (12076:5220) service BGP community to your route filter.
+Requires ExpressRoute
+Service to BGP community value
+
+Firewall, using the Defender for Identity Azure IP addresses
+Customers who don’t have a proxy or ExpressRoute can configure their firewall with the IP addresses assigned to the MDI cloud service. This requires that the customer monitor the Azure IP address list for any changes in the IP addresses used by the MDI cloud service. If you chose this option, we recommend that you download the Azure IP Ranges and Service Tags – Public Cloud file and use the AzureAdvancedThreatProtection service tag to add the relevant IP addresses.
+Customer must monitor Azure IP assignments
+Virtual network service tags
+Azure service tags discovery API
+Discover service tags with downloadable JSON files
+
+Table 3 - Connectivity requirements
+For more information, see Microsoft Defender for Identity architecture.
+Sensor Requirements and Recommendations
+The following table summarizes requirements and recommendations for the domain controller, AD FS, or AD CS server where you'll install the Defender for Identity sensor.
+Prerequisite / Recommendation
+Description
+
+Specifications
+Make sure to install Defender for Identity on Windows version 2016 or higher, on a domain controller server with a minimum of: - 2 cores - 6 GB of RAM - 6 GB of disk space required, 10 GB recommended, including space for Defender for Identity binaries and logs Defender for Identity supports read-only domain controllers (RODC).
+
+Performance
+For optimal performance, set the Power Option of the machine running the Defender for Identity sensor to High Performance.
+
+Maintenance window
+We recommend scheduling a maintenance window for your domain controllers, as a restart might be required if the installation runs and a restart is already pending, or if .NET Framework needs to be installed. If .NET Framework version 4.7 or later isn't already found on the system, .NET Framework version 4.7 is installed, and may require a restart.
+
+Table 4 - Sensor requirements
+ 
+Minimum operating system requirements
+Defender for Identity sensors can be installed on the following operating systems:
+Windows Server 2016
+Windows Server 2019. Requires KB4487044 or a newer cumulative update. Sensors installed on Server 2019 without this update will be automatically stopped if the ntdsai.dll file version found in the system directory is older than 10.0.17763.316
+Windows Server 2022
+For all operating systems:
+Both servers with desktop experience and server cores are supported.
+Nano servers are not supported.
+Installations are supported for domain controllers, AD FS, and AD CS servers.
+Legacy operating systems
+Windows Server 2012 and Windows Server 2012 R2 reached extended end of support on October 10, 2023.
+We recommend that you plan to upgrade those servers as Microsoft no longer supports the Defender for Identity sensor on devices running Windows Server 2012 and Windows Server 2012 R2.
+Sensors running on these operating systems will continue to report to Defender for Identity and even receive sensor updates, but some of the new functionalities will not be available as they might rely on operating system capabilities.
+Required Ports
+Protocol
+Transport
+Port
+From
+To
+
+Internet ports
+
+
+
+
+
+SSL (*.atp.azure.us) Alternately, configure access through a proxy.
+TCP
+443
+Defender for Identity sensor
+Defender for Identity cloud service
+
+Internal ports
+
+
+
+
+
+DNS
+TCP and UDP
+53
+Defender for Identity sensor
+DNS Servers
+
+Netlogon (SMB, CIFS, SAM-R)
+TCP/UDP
+445
+Defender for Identity sensor
+All devices on the network
+
+RADIUS
+UDP
+1813
+RADIUS
+Defender for Identity sensor
+
+Localhost ports: Required for the sensor service updater By default, localhost to localhost traffic is allowed unless a custom firewall policy blocks it.
+
+
+
+
+
+SSL
+TCP
+444
+Sensor service
+Sensor updater service
+
+Network Name Resolution (NNR) ports To resolve IP addresses to computer names, we recommend opening all ports listed. However, only one port is required.
+
+
+
+
+
+NTLM over RPC
+TCP
+Port 135
+Defender for Identity sensor
+All devices on network
+
+NetBIOS
+UDP
+137
+Defender for Identity sensor
+All devices on network
+
+RDP Only the first packet of Client hello queries the DNS server using reverse DNS lookup of the IP address (UDP 53)
+TCP
+3389
+Defender for Identity sensor
+All devices on network
+
+Table 5 - Required ports for MDI
+ 
+If you're working with multiple forests, make sure that the following ports are opened on any machine where a Defender for Identity sensor is installed:
+Protocol
+Transport
+Port
+To/From
+Direction
+
+Internet ports
+
+
+
+
+
+SSL (*.atp.azure.us)
+TCP
+443
+Defender for Identity cloud service
+Outbound
+
+Internal ports
+
+
+
+
+
+LDAP
+TCP and UDP
+389
+Domain controllers
+Outbound
+
+Secure LDAP (LDAPS)
+TCP
+636
+Domain controllers
+Outbound
+
+LDAP to Global Catalog
+TCP
+3268
+Domain controllers
+Outbound
+
+LDAPS to Global Catalog
+TCP
+3269
+Domain controllers
+Outbound
+
+Table 6 - Required ports for MDI for multi-forest scenarios
+ 
+Dynamic memory requirements
+The following table describes memory requirements on the server used for the Defender for Identity sensor, depending on the type of virtualization you're using:
+VM running on
+Description
+
+Hyper-V
+Ensure that Enable Dynamic Memory isn't enabled for the VM.
+
+VMware
+Ensure that the amount of memory configured and the reserved memory are the same, or select the Reserve all guest memory (All locked) option in the VM settings.
+
+Other virtualization host
+Refer to the vendor supplied documentation on how to ensure that memory is fully allocated to the VM at all times.
+
+Table 7 - Dynamic memory requirements
+Time synchronization
+The servers and domain controllers onto which the sensor is installed must have time synchronized to within five minutes of each other.
+Secure time seeding needs to be disabled on domain controllers. There is a scenario where a gMSA Account Password is Reset to future date, breaking the MDI sensor and causing a service start failure. This is caused by a Windows 2016 and newer feature “secure time seeding” which can be referenced here: https://learn.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-server-2016-improvements#secure-time-seeding
+ Test your prerequisites
+We recommend running the Test-MdiReadiness.ps1 script to test and see if your environment has the necessary prerequisites.
+The link to the Test-MdiReadiness.ps1 script is also available from Microsoft Defender XDR, on the Identities > Tools page (Preview).
+Capacity Planning
+Use the Defender for Identity sizing tool to determine whether your domain controller servers have enough resources for a Microsoft Defender for Identity sensor.
+To ensure accurate results, only run the sizing tool before you've installed any Defender for Identity sensors in your environment.
+Link to sizing tool: GitHub - microsoft/Microsoft-Defender-for-Identity-Sizing-Tool
+Configure endpoint proxy and internet connectivity settings
+Each Microsoft Defender for Identity sensor requires internet connectivity to the Defender for Identity cloud service to report sensor data and operate successfully.
+In some organizations, domain controllers aren't directly connected to the internet, but are connected through a web proxy connection, and SSL inspection and intercepting proxies are not supported for security reasons. In such cases, your proxy server must allow the data to directly pass from the Defender for Identity sensors to the relevant URLs without interception.
+Enable access to Defender for Identity service URLs in the proxy server
+To ensure maximum security and data privacy, Defender for Identity uses certificate-based, mutual authentication between each Defender for Identity sensor and the Defender for Identity cloud back-end. SSL inspection and interception are not supported, as they interfere in the authentication process.
+To enable access to Defender for Identity, make sure to allow traffic to the sensor URL, using the following syntax: <your-workspace-name>sensorapi.atp.azure.com. For example, contoso-corpsensorapi.atp.azure.us.
+If your proxy or firewall uses explicit allowlists, we also recommend ensuring that the following URLs are allowed:
+crl.microsoft.com
+ctldl.windowsupdate.com
+www.microsoft.com/pkiops/*
+www.microsoft.com/pki/*
+Occasionally, the Defender for Identity service IP addresses may change. If you manually configure IP addresses, or if your proxy automatically resolves DNS names to their IP address and uses them, we recommend that you periodically check that the configured IP addresses are still up-to-date.
+If you've previously configured your proxy using legacy options, including WinInet or a registry key update, you'll need to make any changes using the method you used originally. For more information, see Change proxy configuration using legacy methods.
+Enable access with a service tag
+Instead of manually enabling access to specific endpoints, download the Azure IP Ranges and Service Tags - Public Cloud, and use the IP address ranges in the AzureAdvancedThreatProtection Azure service tag to enable access to Defender for Identity.
+For more information, see Virtual network service tags. 
+For US Government offerings, see Get started with US Government offerings.
+Change proxy configuration using the CLI
+Prerequisites: Locate the Microsoft.Tri.Sensor.Deployment.Deployer.exe file. This file is located together with the sensor installation. By default, this location is C:\Program Files\Azure Advanced Threat Protection Sensor\version number\
+To change the current sensor's proxy configuration:
+Windows Command Prompt
+Microsoft.Tri.Sensor.Deployment.Deployer.exe ProxyUrl="http://myproxy.contoso.local" ProxyUserName="CONTOSO\myProxyUser" ProxyUserPassword="[replace with password]"
+To remove the current sensor's proxy configuration entirely:
+Windows Command Prompt:
+Microsoft.Tri.Sensor.Deployment.Deployer.exe ClearProxyConfiguration
+Change proxy configuration using PowerShell
+Before running Defender for Identity PowerShell commands, make sure that you've downloaded the Defender for Identity PowerShell module.
+You can view and change the proxy configuration for your sensor using PowerShell. To do so, sign into your sensor server and run commands as shown in the following examples:
+To view the current sensor's proxy configuration:
+PowerShell
+Get-MDISensorProxyConfiguration
+To change the current sensor's proxy configuration:
+PowerShell
+Set-MDISensorProxyConfiguration -ProxyUrl 'http://proxy.contoso.com:8080'
+This example sets the proxy configuration for the Defender for Identity sensor to use the specified proxy server without any credentials.
+To remove the current sensor's proxy configuration entirely:
+PowerShell
+Clear-MDISensorProxyConfiguration
+For more information, see the following DefenderForIdentity PowerShell references:
+Get-MDISensorProxyConfiguration
+Set-MDISensorProxyConfiguration
+Clear-MDISensorProxyConfiguration
+Change proxy configuration using legacy methods
+If you'd previously configured your proxy settings via either WinINet or a registry key and need to update them, you'll need to use the same method you used originally.
+While configuring your proxy from the command line during installation ensures that only the Defender for Identity sensor services communicate through the proxy, using WinINet or a registry allow other services running in the context as Local System or Local Service to also direct traffic through the proxy.
+Configure a proxy server using WinINet
+When configuring the proxy using WinINet, keep in mind that the embedded Defender for Identity sensor service runs in system context using the LocalService account, and that the Defender for Identity Sensor updater service runs in the system context using LocalSystem account.
+If you use WinHTTP for proxy configuration, you still need to configure Windows Internet (WinINet) browser proxy settings for communication between the sensor and the Defender for Identity cloud service.
+If you're using Transparent proxy or WPAD in your network topology, you don't need to configure WinINet for your proxy.
+Configure a proxy server using the registry
+This section describes how to configure a static proxy server manually using a registry-based static proxy.
+ Important
+Configuring a proxy via the registry affects all applications that use WinINet with the LocalService and LocalSystem accounts, including Windows services.
+Apply registry changes only to the LocalService and LocalSystem accounts.
+To configure your proxy, copy your proxy configuration in user context to the LocalSystem and LocalService accounts as follows:
+Back up your registry keys.
+In the registry, search for the DefaultConnectionSettings value as REG_BINARY, under the HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections\DefaultConnectionSettings registry key, and copy it.
+If the LocalSystem doesn't have the correct proxy settings, copy the proxy setting from the Current_User to the LocalSystem, under the HKU\S-1-5-18\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections\DefaultConnectionSettings registry key.
+Make sure to paste the value from the Current_User's DefaultConnectionSettings registry key as REG_BINARY.
+Note
+If the LocalService doesn't have the correct proxy settings, then copy the proxy setting from the Current_User to the LocalService, under the HKU\S-1-5-19\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections\DefaultConnectionSettings registry key
+Make sure to paste the value from the Current_User's DefaultConnectionSettings registry key as REG_BINARY.
+Test Microsoft Defender for Identity connectivity
+The Defender for Identity sensor requires network connectivity to the Defender for Identity service, and most organizations control access to the internet via firewall or proxies. For example, when using a proxy, you can allow access to port 443 via a single URL. For more information, see Required ports.
+After preparing the server that you're going to use for your Microsoft Defender for Identity sensor and configuring proxy settings as needed, we recommend that you test connectivity to make sure that your server can access the Defender for Identity cloud service. Use the procedures in this article even after deploying if your sensor server is experiencing connectivity issues.
+For more information, see Required ports.
+Test connectivity using a browser
+Open a browser. If you're using a proxy, make sure that your browser uses the same proxy settings being used by the sensor.
+For example, if the proxy settings are defined for Local System, you'll need to use PSExec to open a session as Local System and open the browser from that session.
+Use the CLI syntax: psexec -s -I <executable path>
+Browse to the following URL:  https://<your_workspace_name>sensorapi.atp.azure.com/tri/sensor/api/ping. Replace <your_workspace_name> with the name of your Defender for Identity workspace.
+Important
+You must specify “https” in the URL.
+Result: You should get an Ok message displayed (HTTP status 200), which indicates you were successfully able to route to the Defender for Identity HTTPS endpoint. This is the desired result.
+For some older workspaces, the message returned could be Error 503 The service is unavailable. This is a temporary state that still indicates success. 
+If you don't get Ok message, then you may have a problem with your proxy configuration. Check your network and proxy settings.
+If you get a certificate error, ensure that you have the required trusted root certificates installed before continuing. 
+For more information, see Proxy authentication problem presents as a connection error.
+Test service connectivity using PowerShell
+Prerequisites: Before running Defender for Identity PowerShell commands, make sure that you downloaded the Defender for Identity PowerShell module.
+Sign into your server and run one of the following commands:
+To use the current server's settings, run:
+Test-MDISensorApiConnection
+To test settings that you're planning on using, but aren't currently configured on the server, run the command using the following syntax:
+Test-MDISensorApiConnection -BypassConfiguration -SensorApiUrl 'https://contososensorapi.atp.azure.us' -ProxyUrl 'https://myproxy.contoso.com:8080' -ProxyCredential $credential
+Where https://contososensorapi.atp.azure.us is an example of your sensor URL, contososensor is the name of your workspace, and https://myproxy.contoso.com:8080 is an example of your proxy URL
+For more information, see the MDI PowerShell documentation.
+Configure Event collection
+The Microsoft Defender for Identity sensor is configured to automatically collect syslog events. For Windows events, Defender for Identity detection relies on specific event logs, which the sensor parses from your domain controllers.
+Event collection for domain controllers and AD FS / AD CS servers
+For the correct events to be audited and included in the Windows event log, your domain controllers or AD FS / AD CS servers require accurate, advanced audit policy settings.
+For more information, see Configure audit policies for Windows event logs.
+Reference of required events
+This section lists the Windows events required by the Defender for Identity sensor, when installed on AD FS / AD CS servers, or on domain controllers.
+Required Active Directory Federation Services (AD FS) events
+The following events are required for Active Directory Certificate Services (AD CS) servers:
+4870: Certificate Services revoked a certificate
+4882: The security permissions for Certificate Services changed
+4885: The audit filter for Certificate Services changed
+4887: Certificate Services approved a certificate request and issued a certificate
+4888: Certificate Services denied a certificate request
+4890: The certificate manager settings for Certificate Services changed.
+4896: One or more rows have been deleted from the certificate database
+For more information, see Configure auditing for Active Directory Certificate Services (AD CS).
+Required Entra Connect events
+The following events are required for Entra Connect servers:
+4624 - An account was successfully logged on
+For more information, see Configure auditing on Entra Connect.
+Other required Windows events
+The following general Windows events are required for all Defender for Identity sensors:
+4662 - An operation was performed on an object
+4726 - User Account Deleted
+4728 - Member Added to Global Security Group
+4729 - Member Removed from Global Security Group
+4730 - Global Security Group Deleted
+4732 - Member Added to Local Security Group
+4733 - Member Removed from Local Security Group
+4741 - Computer Account Added
+4743 - Computer Account Deleted
+4753 - Global Distribution Group Deleted
+4756 - Member Added to Universal Security Group
+4757 - Member Removed from Universal Security Group
+4758 - Universal Security Group Deleted
+4763 - Universal Distribution Group Deleted
+4776 - Domain Controller Attempted to Validate Credentials for an Account (NTLM)
+5136 - A directory service object was modified
+7045 - New Service Installed
+8004 - NTLM Authentication
+For more information, see Configure NTLM auditing and Configure domain object auditing.
+Event collection for standalone sensors
+If you're working with a standalone Defender for Identity sensor, configure event collection manually using one of the following methods:
+Listen for SIEM events on your Defender for Identity standalone sensor. Defender for Identity supports UDP traffic from your SIEM or syslog server.
+Configure Windows event forwarding to your Defender for Identity standalone sensor
+ Caution
+When forwarding syslog data to a standalone sensor, make sure not to forward all syslog data to your sensor.
+
+Important
+Defender for Identity standalone sensors do not support the collection of Event Tracing for Windows (ETW) log entries that provide the data for multiple detections. For full coverage of your environment, we strongly recommend deploying the Defender for Identity sensor. Detection coverage is negatively impacted by using the stand-alone sensor.
+
+For more information, see your SIEM or syslog server's product documentation.
+Configure audit policies for Windows event logs
+To enhance detections and gather more information on user actions like NTLM logons and security group changes, Microsoft Defender for Identity relies on specific Windows Event log entries. Proper configuration of Advanced Audit Policy settings on your domain controllers is crucial to avoid gaps in the Event Log and incomplete Defender for Identity coverage.
+This section describes how to configure your Advanced Audit Policy settings as needed for a Defender for Identity sensor, and other configurations for specific event types.
+Defender for Identity generates health issues for each of these scenarios if they're detected. For more information, see Microsoft Defender for Identity health issues.
+Prerequisites
+Before running Defender for Identity PowerShell commands, make sure that you downloaded the Defender for Identity PowerShell module.
+Generate a report with current configurations via PowerShell
+Before you start creating new event and audit policies, we recommend that you run the following PowerShell command to generate a report of your current domain configurations:
+New-MDIConfigurationReport [-Path] <String> [-Mode] <String> [-OpenHtmlReport]
+Where:
+Path specifies the path to save the reports to
+Mode specifies whether you want to use Domain or LocalMachine mode. In Domain mode, the settings are collected from the Group Policy objects. In LocalMachine mode, the settings are collected from the local machine.
+OpenHtmlReport opens the HTML report after the report is generated
+For example, to generate a report and open it in your default browser, run the following command:
+New-MDIConfigurationReport -Path "C:\Reports" -Mode Domain -OpenHtmlReport
+For more information, see the Defender for Identity PowerShell reference.
+ Tip
+The Domain mode report includes only configurations set as group policies on the domain. If you have settings defined locally on your Domain Controllers, we recommend that you also run the Test-MdiReadiness.ps1 script.
+
+Configure auditing for domain controllers
+Update your Advanced Audit Policy settings and extra configurations for specific events and event types, such as users, groups, computers, and more. Audit configurations for domain controllers include:
+Advanced Audit Policy settings
+NTLM auditing
+Domain object auditing
+Use the following procedures to configure auditing on the domain controllers you're using with Defender for Identity:
+Configure Advanced Audit Policy settings from the UI
+This procedure describes how to modify your domain controller's Advanced Audit Policies as needed for Defender for Identity via the UI.
+Related health issue: Directory Services Advanced Auditing is not enabled as required
+To configure your Advanced Audit Policy settings:
+Sign in to the server as Domain Administrator.
+Open the Group Policy Management Editor from Server Manager > Tools > Group Policy Management.
+Expand the Domain Controllers Organizational Units, right-click Default Domain Controllers Policy, and then select Edit. For example:
+/
+Figure 1- Group policy management
+ Note
+Use the Default Domain Controllers Policy or a dedicated GPO to set these policies.
+From the window that opens, go to Computer Configuration > Policies > Windows Settings > Security Settings and, depending on the policy you want to enable, do the following:
+Go to Advanced Audit Policy Configuration > Audit Policies. For example:
+
+
+
+
+
+
+
+
+
+
+
+
+
+Under Audit Policies, edit each of the following policies and select Configure the following audit events for both Success and Failure events.
+Audit policy
+Subcategory
+Triggers event IDs
+
+Account Logon
+Audit Credential Validation
+4776
+
+Account Management
+Audit Computer Account Management *
+4741, 4743
+
+Account Management
+Audit Distribution Group Management
+4753, 4763
+
+Account Management
+Audit Security Group Management *
+4728, 4729, 4730, 4732, 4733, 4756, 4757, 4758
+
+Account Management
+Audit User Account Management
+4726
+
+DS Access
+Audit Directory Service Changes
+5136
+
+System
+Audit Security System Extension *
+7045
+
+DS Access
+Audit Directory Service Access
+4662 - For this event, you must also configure domain object auditing.
+
+Table 8 - Audit policy event IDs
+Note
+* Noted subcategories don't support failure events. However, we recommend adding them for auditing purposes in case they're implemented in the future. For more information, see Audit Computer Account Management, Audit Security Group Management, and Audit Security System Extension.
+
+For example, to configure Audit Security Group Management, under Account Management, double-click Audit Security Group Management, and then select Configure the following audit events for both Success and Failure events: 
+
+
+
+
+
+
+
+
+
+
+
+
+
+From an elevated command prompt, enter the following command:
+ gpupdate
+After you apply the policy via GPO, the new events are visible in the Event Viewer, under Windows Logs -> Security.
+To test your audit policies from the command line, run the following command:
+auditpol.exe /get /category:*
+For more information, see auditpol reference documentation.
+Configure Advanced Audit Policy settings using PowerShell
+Note
+The use of the MDI PowerShell module is strongly encouraged versus manual configuration.
+Before you start creating new event and audit policies, we recommend that you run the following PowerShell command to generate a report of your current domain configurations:
+This procedure describes how to modify your domain controller's Advanced Audit Policies as needed for Defender for Identity using PowerShell.
+Related health issue: Directory Services Advanced Auditing is not enabled as required
+To configure your settings, run:
+Set-MDIConfiguration [-Mode] <String> [-Configuration] <String[]> [-CreateGpoDisabled] [-SkipGpoLink] [-Force]
+Where:
+Mode specifies whether you want to use Domain or LocalMachine mode. In Domain mode, the settings are collected from the Group Policy objects. In LocalMachine mode, the settings are collected from the local machine.
+Configuration specifies which configuration to set. Use All to set all configurations.
+CreateGpoDisabled specifies if the GPOs are created and kept as disabled.
+SkipGpoLink specifies that GPO links aren't created.
+Force specifies that the configuration is set or GPOs are created without validating the current state.
+
+To view your audit policies, use the Get-MDIConfiguration command to show current values:
+Get-MDIConfiguration [-Mode] <String> [-Configuration] <String[]>
+Where:
+Mode specifies whether you want to use Domain or LocalMachine mode. In Domain mode, the settings are collected from the Group Policy objects. In LocalMachine mode, the settings are collected from the local machine.
+Configuration specifies which configuration to get. Use All to get all configurations.
+To test your audit polices, use the Test-MDIConfiguration command to get a true or false response as to whether the values are configured correctly:
+Test-MDIConfiguration [-Mode] <String> [-Configuration] <String[]>
+Where:
+Mode specifies whether you want to use Domain or LocalMachine mode. In Domain mode, the settings are collected from the Group Policy objects. In LocalMachine mode, the settings are collected from the local machine.
+Configuration specifies which configuration to test. Use All to test all configurations.
+For more information, see the following DefenderForIdentity PowerShell references:
+Set-MDIConfiguration
+Get-MDIConfiguration
+Test-MDIConfiguration
+Configure NTLM auditing
+This section describes the extra configuration steps needed to audit Event ID 8004.
+ Note
+Domain group policies to collect Windows Event 8004 should only be applied to domain controllers.
+When Windows Event 8004 is parsed by Defender for Identity Sensor, Defender for Identity NTLM authentications activities are enriched with the server accessed data.
+Enable auditing for the configuration container using the DefenderforIdentity PowerShell module Set-MDIConfiguration command.
+Set-MDIConfiguration -Mode LocalMachine -Configuration NTLMAuditing
+See Configure NTLM Auditing for manual configuration steps using Group Policy Management Editor.
+Configure domain object auditing
+To collect events for object changes, such as event 4662, you must also configure object auditing on the user, group, computer, and other objects. This procedure describes how to enable auditing in the Active Directory domain.
+Important
+Make sure to review and audit your policies (UI / PowerShell) before enabling event collection to ensure that the domain controllers are properly configured to record the necessary events. If configured properly, this auditing should have minimal effect on server performance.
+Related health issue: Directory Services Object Auditing is not enabled as required
+Configure domain object auditing using the DefenderforIdentity PowerShell module Set-MDIConfiguration command.
+Set-MDIConfiguration -Mode Domain -Configuration DomainObjectAuditing
+See Configure domain object auditing for manual configuration steps using Active Directory Users and Computers.
+Configure auditing for Active Directory Certificate Services (AD CS)
+If you're working with a dedicated server with Active Directory Certificate Services (AD CS) configured, make sure to configure auditing as follows to view dedicated alerts and Secure Score reports.
+Create a group policy to apply to your AD CS server. Edit it and configure the following auditing settings:
+Go to Computer Configuration\Policies\Windows Settings\Security Settings\Advanced Audit Policy Configuration\Audit Policies\Object Access\Audit Certification Services.
+Select to configure audit events for Success and Failure. For example:
+/
+
+Configure auditing on the certificate authority (CA) using one of the following methods:
+To configure CA auditing using the command line:
+certutil –setreg CA\AuditFilter 127 
+net stop certsvc && net start certsvc
+Note
+The AuditFilter integer value 127 is a bitmask value indicating all auditing parameters are enabled.	
+To Configure CA auditing using the GUI:
+Select Start -> Certification Authority (MMC Desktop application). Right-click your CA's name and select Properties. For example:
+/
+Figure 5 - CA properties
+Select the Auditing tab, select all the events you want to audit, and then select Apply. For example:
+/
+Figure 6 - CA Properties
+ Note
+Configuring Start and Stop Active Directory Certificate Services event auditing may cause restart delays when dealing with a large AD CS database. Consider removing irrelevant entries from the database, or alternatively, refrain from enabling this specific type of event.
+
+Configure auditing for Entra Connect
+Create a group policy to apply to your Microsoft Entra Connect servers. Edit it and configure the following auditing settings:
+Go to Computer Configuration\Policies\Windows Settings\Security Settings\Advanced Audit Policy Configuration\Audit Policies\Logon/Logoff\Audit Logon.
+Select to configure audit events for Success and Failure. For example:
+/
+Figure 7 - Audit logon and logoff
+
+Configure auditing on the configuration container
+Enable auditing for the configuration container using the DefenderforIdentity PowerShell module Set-MDIConfiguration command.
+Set-MDIConfiguration -Mode Domain -Configuration ConfigurationContainerAuditing
+See Configure auditing on the configuration container for manual configuration steps.
+Configure Directory Service Account
+Note
+For optimal security, it is recommended to use a Group Managed Service Account (gMSA).
+
+Create Sensor Group:
+$SensorGroup = 'MDISensors'
+$SensorGroupDesc = 'Members are allowing MDI gMSA attribute of -PrincipalsAllowedtoRetrieveManagedPassowrd.'
+New-ADGroup -Name $SensorGroup `
+    -Path "OU=Groups,OU=Tier0,DC=<enter domain name>,DC=<enter domain suffix>" `
+    -GroupScope 'Global' `
+    -GroupCategory 'Security'
+Create Group Managed Service Account:
+$Identity= 'MDIgMSA' #The name of the gMSA to be created
+$Description = "MDI group managed service account"
+$DNS = 'MDIgMSA.<domain.mil>' #This is the gmsa dns hostname
+$Principal = Get-ADGroup $SensorGroup #Setting attribute for MDI Sensor to -PrincipalsAllowedtoRetrieveManagedPassowrd.
+$Kerb = 'AES128,AES256' #2016 and above OS STIG level - verify encryption used in env.
+New-ADServiceAccount -Name $Identity `
+    -Description $Description `
+    -DNSHostName $DNS `
+    -ManagedPasswordIntervalInDays 30 `
+    -PrincipalsAllowedToRetrieveManagedPassword $Principal `
+    -Enabled $True `
+    -KerberosEncryptionType $Kerb `
+    -PassThru
+Set all domain controllers to be members of sensor group:
+$sourceGroupName = "Domain Controllers"
+$targetGroupName = $SensorGroup
+
+# Retrieve the distinguished name (DN) of the source and target groups
+$sourceGroup = Get-ADGroup -Identity $sourceGroupName
+$targetGroup = Get-ADGroup -Identity $targetGroupName
+
+if ($sourceGroup -and $targetGroup) {
+    # Get all members of the source group
+    $members = Get-ADGroupMember -Identity $sourceGroup.DistinguishedName
+    
+    # Add each member to the target group
+    foreach ($member in $members) {
+        Add-ADGroupMember -Identity $targetGroup.DistinguishedName -Members $member.SamAccountName
+    }
+    
+    Write-Output "All members of '$sourceGroupName' have been added to '$targetGroupName'."
+} else {
+    Write-Output "One or both of the specified groups could not be found."
+}
+Set gMSA $Identity with permission.
+Test gMSA 'LogOnAsAService' permission after policy set in Step 4.
+Get-ADServiceAccount -Identity $Identity -Properties * | select Prin*
+Test-ADServiceAccount -Identity $Identity
+Grant Directory Service Account permissions on all objects
+Declare the identity that you want to add read access to the deleted objects container.
+$Identity = 'MDIgMSA'
+Create a group and add the Group Managed Service Account to it to configure permissions for the group and incorporate the Group Managed Service Account within.
+$groupName = 'MDIDeletedObjRead'
+$groupDescription = 'Members of this group are allowed to read the objects in the Deleted Objects container in AD'
+if(Get-ADServiceAccount -Identity $Identity -ErrorAction SilentlyContinue) {
+    $groupParams = @{
+        Name           = $groupName
+        SamAccountName = $groupName
+        DisplayName    = $groupName
+        GroupCategory  = 'Security'
+        GroupScope     = 'Universal'
+        Description    = $groupDescription
+    }
+    $group = New-ADGroup @groupParams -PassThru
+    Add-ADGroupMember -Identity $group -Members ('{0}$' -f $Identity)
+    $Identity = $group.Name
+}
+
+# Get the deleted objects container's distinguished name:
+$distinguishedName = ([adsi]'').distinguishedName.Value
+$deletedObjectsDN = 'CN=Deleted Objects,{0}' -f $distinguishedName
+
+# Take ownership on the deleted objects container:
+$params = @("$deletedObjectsDN", '/takeOwnership')
+C:\Windows\System32\dsacls.exe $params
+
+# Grant the 'List Contents' and 'Read Property' permissions to the user or group:
+$params = @("$deletedObjectsDN", '/G', ('{0}\{1}:LCRP' -f ([adsi]'').name.Value, $Identity))
+C:\Windows\System32\dsacls.exe $params
+  
+# To remove the permissions, uncomment the next 2 lines and run them instead of the two prior ones:
+# $params = @("$deletedObjectsDN", '/R', ('{0}\{1}' -f ([adsi]'').name.Value, $Identity))
+# C:\Windows\System32\dsacls.exe $params
+Configure SAM-R for lateral movement
+Note
+This is a DENY Group Policy Object to Domain Controllers. On a STIG level, you could add these settings to each OS based or standalone GPO at the top level down. Plan according on this (layout).
+
+ Configure SAM-R required permissions here.
+ Configure DENY for Domain Controllers on the GPO.
+/
+Figure 8 - SAM-R security settings
+Download and install the MDI sensor
+Download the MDI sensor
+In Microsoft Defender XDR, go to Settings > Identities. 
+Select the Sensors tab, which displays all Defender for Identity sensors. For example:
+Select Add sensor. Then, in the Add a new sensor pane, select Download installer and save the installation package locally. The downloaded zip file includes the following files:
+The Defender for Identity sensor installer
+The configuration setting file with the required information to connect to the Defender for Identity cloud service
+Npcap OEM version 1.0, which is automatically installed by the sensor installation if it's not found to be already installed
+In the Add a new sensor pane, copy the Access key value and save it to a secured location. This access key is a one-time password for use when deploying the sensor, after which communication is performed using certificates for authentication and TLS encryption.
+ Tip
+We recommend you regenerate the access key using Regenerate key button periodically. This key is used to configure new deployments of the MDI sensor. It won’t affect any previously deployed sensors.
+Copy the downloaded installation package to the dedicated server or domain controller where you're installing the Defender for Identity sensor.
+Install the sensor using the UI
+The default recommendation for installing the Defender for Identity sensor is to use the UI.
+When installing the sensor on Windows Server Core, or to deploy the sensor via a software deployment system, follow the steps for silent installation instead.
+If you're using a proxy, we recommend that you install the sensor and configure your proxy together from the command line. If you need to update your proxy settings later, use PowerShell or the CLI. For more information, see Configure endpoint proxy and internet connectivity settings.
+Perform the following steps on the domain controller or AD FS / AD CS server.
+Verify the machine has connectivity to the relevant Defender for Identity cloud service endpoint(s).
+Extract the installation files from the zip file. Installing directly from the zip file fails.
+Run Azure ATP sensor setup.exe with elevated privileges (Run as administrator) and follow the setup wizard.
+On the Welcome page, select your language and select Next.
+The installation wizard automatically checks if the server is a domain controller, AD FS server, AC CS server, or a dedicated server.
+If it's a domain controller / AD FS server / AD CS server, the Defender for Identity sensor is installed.
+If it's a dedicated server, the Defender for Identity standalone sensor is installed.
+Select Next.
+
+Note
+A warning is issued if the domain controller / AD FS server / AD CS or dedicated server doesn't meet the minimum hardware requirements for the installation.
+The warning doesn't prevent you from selecting Next and proceeding with the installation, which might still be the right option. For example, you need less room for data storage when installing a small lab test environment.
+For production environments, we highly recommend working with Defender for Identity's capacity planning guide to make sure your domain controllers or dedicated servers meet the necessary requirements.
+On the Configure the sensor screen, enter the installation path and the setup package access key. Enter the following details:
+Installation path: The location where the Defender for Identity sensor is installed. By default the path is %programfiles%\Azure Advanced Threat Protection sensor. Leave the default value.
+Access key: Retrieved from the Microsoft Defender portal in a previous step.
+Select Install. The following components are installed and configured during the installation of the Defender for Identity sensor:
+Defender for Identity sensor service and Defender for Identity sensor updater service
+Npcap OEM version 1.0
+Important
+Npcap OEM version 1.0 is automatically installed if no other version of Npcap is present. If you already have Npcap installed due to other software requirements or for any other reason, it's important to ensure that it's version 1.0 or later and that it has been installed with the required settings for Defender for Identity.
+Viewing sensor versions
+Beginning with version 2.176, when installing the sensor from a new package, the sensor's version under Add/Remove Programs appears with the full version number, such as 2.176.x.y, instead of the static 2.0.0.0 that was previously shown.
+The installed version continues to show even after automatic updates are run from the Defender for Identity cloud services.
+View the sensor's real version in the Microsoft Defender XDR sensor settings page, in the executable path or in the file version.
+Defender for Identity sensor silent installation
+The Defender for Identity silent installation is configured to automatically restart the server at the end of the installation if necessary.
+Make sure to schedule a silent installation only during a maintenance window. Because of a Windows Installer bug, the norestart flag can't be reliably used to make sure the server doesn't restart.
+To track your deployment progress, monitor the Defender for Identity installer logs, which are located in %localappdata%\Temp.
+Silent installation via a deployment system
+When silently deploying the Defender for Identity sensor via System Center Configuration Manager or other software deployment system, we recommend creating two deployment packages:
+Net Framework 4.7 or later, which might include rebooting the domain controller
+The Defender for Identity sensor
+Make the Defender for Identity sensor package dependent on the deployment of the .NET Framework package deployment. If needed, get the .NET Framework 4.7 offline deployment package.
+Silent installation via a deployment system
+When silently deploying the Defender for Identity sensor via System Center Configuration Manager or other software deployment system, we recommend creating two deployment packages:
+Net Framework 4.7 or later, which might include rebooting the domain controller
+The Defender for Identity sensor
+Make the Defender for Identity sensor package dependent on the deployment of the .NET Framework package deployment. If needed, get the .NET Framework 4.7 offline deployment package.
+Run a silent installation
+Use the following commands to perform a fully silent install of the Defender for Identity sensor, using the access key copied in a previous step. 
+cmd.exe syntax:
+"Azure ATP sensor Setup.exe" /quiet NetFrameworkCommandLineArguments="/q" AccessKey="<Access Key>"
+ Powershell syntax:
+.\"Azure ATP sensor Setup.exe" /quiet NetFrameworkCommandLineArguments="/q" AccessKey="<Access Key>"
+ 
+Note
+When using the Powershell syntax, omitting the .\ preface results in an error that prevents silent installation.
+
+For a full list of installation options and parameters, see Run a silent installation.
+Run a silent installation with a proxy configuration
+Use the following command to configure your proxy together with a silent installation:
+"Azure ATP sensor Setup.exe" [/quiet] [/Help] [ProxyUrl="http://proxy.internal.com"] [ProxyUserName="domain\proxyuser"] [ProxyUserPassword="[replace password]"]`
+ 
+Note
+If you've previously configured your proxy using legacy options, including WiniNet or a registry key update, you'll need to make any changes with the same method you used originally. For more information, see Change proxy configuration using legacy methods.
+
+For a full list of installation options and parameters, see Run a silent installation with a proxy configuration.
+ Tip
+If you need to update your proxy settings later on, use PowerShell or the CLI. For more information, see Configure endpoint proxy and internet connectivity settings. We recommend creating and using a custom DNS A record for the proxy server, which you can use to change the proxy server's address when needed and use the hosts file for testing.
+Configure Microsoft Defender for Identity sensor settings
+After the Defender for Identity sensor is installed, do the following to view and configure Defender for Identity sensor settings:
+In Microsoft Defender XDR, go to Settings > Identities > Sensors. The Sensors page displays all your Defender for Identity sensors, listing the following details per sensor:
+Sensor name
+Sensor domain membership
+Sensor version number
+Whether updates should be delayed
+Sensor service status
+Sensor status
+Sensor health status
+The number of health issues
+When the sensor was created
+For more information, see Sensor details.
+Select Filters to select the filters you want visible.
+Use the displayed filters to determine which sensors to display.
+Select a sensor to show a details pane with more information about the sensor and its health status.
+Scroll down and select Manage sensor to show a pane where you can configure sensor details.
+Configure the following sensor details:
+Name
+Description
+
+Description
+Optional. Enter a description for the Defender for Identity sensor.
+
+Domain Controllers (FQDN)
+Required for the Defender for Identity standalone sensors and sensors installed on AD FS / AD CS servers, and cannot be modified for the Defender for Identity sensor. Enter the complete FQDN of your domain controller and select the plus sign to add it to the list. For example, DC1.domain1.test.local. For any servers you define in the Domain Controllers list: - All domain controllers whose traffic is being monitored via port mirroring by the Defender for Identity standalone sensor must be listed in the Domain Controllers list. If a domain controller isn't listed in the Domain Controllers list, detection of suspicious activities might not function as expected. - At least one domain controller in the list should be a global catalog. This enables Defender for Identity to resolve computer and user objects in other domains in the forest.
+
+Capture Network adapters
+Required. - For Defender for Identity sensors, all network adapters that are used for communication with other computers in your organization. - For Defender for Identity standalone sensor on a dedicated server, select the network adapters that are configured as the destination mirror port. These network adapters receive the mirrored domain controller traffic.
+
+Table 9 - Sensor configuration details 
+On the Sensors page, select Export to export a list of your sensors to a .csv file.
+Validate installation
+Use the following procedures to validate your Defender for Identity sensor installation.
+ Note
+If you're installing on an AD FS or AD CS server, you'll use a different set of validations. For more information, see Validate successful deployment on AD FS / AD CS servers.
+Check that the Azure Advanced Threat Protection sensor service is running on your sensor machine. After you save the Defender for Identity sensor settings, it might take a few seconds for the service to start.
+If the service doesn't start, review the Microsoft.Tri.sensor-Errors.log file, located by default at %programfiles%\Azure Advanced Threat Protection sensor\<sensor version>\Logs, where <sensor version> is the version you deployed.
+Verify security alert functionality
+This section describes how you can verify that security alerts are being triggered as expected.
+When using the examples in the following steps, make sure to replace contosodc.contoso.azure and contoso.azure with the FQDN of your Defender for Identity sensor and domain name respectively.
+On a member-joined device, open a command prompt and enter nslookup
+Enter server and the FQDN or IP address of the domain controller where the Defender for Identity sensor is installed. For example: server contosodc.contoso.azure
+Trigger the “Network Mapping Reconnaissance (DNS)” alert by running: ls -d contoso.azure
+Repeat the previous two steps for each sensor you want to test.
+Access the device details page for the computer you ran the connectivity test from, such as from the Devices page, by searching for device name, or from elsewhere in the Defender portal
+On the device details tab, select Timeline tab to view the activity:
+Events: DNS queries performed to a specified domain name
+Action type MdiDnsQuery
+If the domain controller or AD FS / AD CS that you're testing is the first sensor you've deployed, wait at least 15 minutes before verifying any logical activity for that domain controller, allowing the database backend to complete the initial microservice deployments.
+Verify latest available sensor version
+The Defender for Identity version is updated frequently. Check for the latest version in the Microsoft Defender XDR Settings > Identities > About page.
+ 
+ 
+
+
+Appendix A: DAO Consolidated Checklist
+
+Checklist Item
+Reference
+
+
+MDI Prerequisites
+2.1
+
+
+Sensor Requirements and Recommendations
+2.2
+
+
+Configure endpoint proxy and internet connectivity settings
+2.3
+
+
+Test Microsoft Defender for Identity connectivity
+2.4
+
+
+Configure Event collection
+2.5
+
+
+Configure audit policies for Windows event logs
+2.6
+
+
+See Configure auditing on the configuration container for manual configuration steps.
+Configure Directory Service Account
+0
+
+
+Grant Directory Service Account permissions on all objects
+2.8
+
+
+Configure SAM-R for lateral movement
+2.9
+
+
+Download and install the MDI sensor
+2.10
+
+
+Configure Microsoft Defender for Identity sensor settings
+2.11
+
+
+Validate installation
+2.12
+
+Table 10 - DAO Consolidated Checklist
+Appendix C: Additional Microsoft Documentation
+Topic
+URL
+
+What is Microsoft Defender for Identity?
+https://learn.microsoft.com/en-us/defender-for-identity/what-is
+
+Zero Trust with Defender for Identity
+https://learn.microsoft.com/en-us/defender-for-identity/zero-trust
+
+Deploy Microsoft Defender for Identity with Microsoft Defender XDR
+https://learn.microsoft.com/en-us/defender-for-identity/deploy/deploy-defender-identity
+
+Configure endpoint proxy and internet connectivity settings
+https://learn.microsoft.com/en-us/defender-for-identity/deploy/configure-proxy
+
+Install the Microsoft Defender for Identity sensor
+https://learn.microsoft.com/en-us/defender-for-identity/deploy/install-sensor 
+
+Configure the Microsoft Defender for Identity Sensor
+https://learn.microsoft.com/en-us/defender-for-identity/deploy/configure-sensor-settings 
+
+Event collection with Microsoft Defender for Identity
+https://learn.microsoft.com/en-us/defender-for-identity/deploy/event-collection-overview 
+
+Table 11 - Additional documentation
+
+
